@@ -1,0 +1,52 @@
+# .github/workflows/run_pipeline.yml
+# On-demand pipeline execution. Trigger manually from the Actions tab with niche/country/ER
+# inputs. Secrets are injected as env (never committed). See spec §7.2, docs/deployment.md.
+#
+# SECURITY: this job uses SUPABASE_SERVICE_ROLE_KEY (full mutation). It must only ever run in
+# this backend workflow — never expose it to the frontend. See docs/security.md.
+name: Execute InstaLeads Verification Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_niche:
+        description: 'Target Creator Niche'
+        required: true
+        default: 'fitness'
+      target_country:
+        description: 'Target Country Code'
+        required: true
+        default: 'USA'
+      min_median_er:
+        description: 'Minimum Median ER (%)'
+        required: true
+        default: '5.0'
+
+jobs:
+  execute-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
+      - name: Run Pipeline
+        env:
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TARGET_NICHE: ${{ inputs.target_niche }}
+          TARGET_COUNTRY: ${{ inputs.target_country }}
+          MIN_MEDIAN_ER: ${{ inputs.min_median_er }}
+        run: |
+          python backend/run_pipeline.py

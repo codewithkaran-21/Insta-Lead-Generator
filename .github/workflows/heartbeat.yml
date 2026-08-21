@@ -1,0 +1,19 @@
+# .github/workflows/heartbeat.yml
+# Supabase free-tier pauses after ~7 days idle; this cron pings PostgREST every 3 days to keep
+# the project awake. See spec §7.1, docs/deployment.md, ADR-0004.
+name: Supabase Inactivity Heartbeat
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *' # Every 3 days
+  workflow_dispatch:
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase PostgREST
+        run: |
+          curl -f -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/leads?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
